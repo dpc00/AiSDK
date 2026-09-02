@@ -1,0 +1,9 @@
+[
+    {
+        "caption": "Open AI(SDK) here...",
+        "command": "ai_sdk_open_here",
+        "args": {
+            "paths": []
+        }
+    }
+]
