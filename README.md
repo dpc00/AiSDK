@@ -5,7 +5,7 @@ Extracted from `dpc00/SText` (`9cfa988`, 2026-07-31) after it was deleted
 instead of being split out. GhostShell was extracted the same way.
 
 This is **not** tommo/`sublime-claude`. It is the `Ai (SDK)` plugin that
-lived in SText as `ai/ai_sdk.py` plus `backend/`.
+lived in SText as `ai/ai_sdk.py` plus `backend/`. An attempt to mimic sublime-claude (ClaudeCode)
 
 ## What it is
 
@@ -46,7 +46,7 @@ still points at `C:\Users\donal\AppData\Local\Programs\Python\Python312\python.e
 ai_sdk.py                 -- Sublime plugin (moved from SText/ai/ for package-root load)
 backend/
   agent_query.py          -- ClaudeSDKClient bridge
-  agent_query_ollama.py   -- Ollama-backed variant (default in recovered snapshot)
+  agent_query_ollama.py   -- Ollama-backed variant (off; _USE_OLLAMA is False)
   st_mcp_bridge.py        -- MCP stdio -> ST eval socket
   mcpclient/              -- MCP client used by the Ollama path
 winutil/_job.py           -- Windows Job Object so the bridge dies with ST

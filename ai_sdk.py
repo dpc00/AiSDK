@@ -18,7 +18,7 @@ import sublime
 import sublime_plugin
 
 _VIEW_NAME = "Ai (SDK)"
-_USE_OLLAMA = True
+_USE_OLLAMA = False
 _BACKEND = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
 _OLLAMA_SCRIPT = os.path.join(_BACKEND, "agent_query_ollama.py")
 _PYTHON = r"C:\Users\donal\AppData\Local\Programs\Python\Python312\python.exe"
