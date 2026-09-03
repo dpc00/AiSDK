@@ -5,7 +5,7 @@ Extracted from `dpc00/SText` (`9cfa988`, 2026-07-31) after it was deleted
 instead of being split out. GhostShell was extracted the same way.
 
 This is **not** tommo/`sublime-claude`. It is the `Ai (SDK)` plugin that
-lived in SText as `ai/ai_sdk.py` plus `backend/`. An attempt to mimic sublime-claude (ClaudeCode)
+lived in SText as `ai/ai_sdk.py` plus `backend/`. An attempt to mimic sublime-claude (ClaudeCode), not complete, many ommissions
 
 ## What it is
 
