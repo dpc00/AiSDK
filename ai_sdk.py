@@ -327,17 +327,12 @@ def plugin_loaded():
             if v.settings().get("ai_sdk_view"):
                 v.set_name(_VIEW_NAME)
                 break
-    # Re-bind to any existing bridge subprocess. After a plugin reload,
-    # the bridge subprocess (started by the previous instance) is
-    # usually still running on port 9504 — but our local _bridge
-    # wrapper was reset to None. _ensure_bridge probes the port and
-    # reattaches if a listener responds. Without this, the first
-    # prompt submission after a reload gets "Bridge not ready" until
-    # something else triggers _ensure_bridge.
-    try:
-        _ensure_bridge()
-    except Exception:
-        pass  # non-fatal: bridge will be started on first submit
+    # Deliberately do NOT call _ensure_bridge() here. Doing so would
+    # start the bridge subprocess on every ST launch/reload even if the
+    # user never touches AiSDK. AiSdkFocusCommand (ctrl+alt+a) and the
+    # submit/clear commands already call _ensure_bridge() themselves, so
+    # the bridge still lazily starts (or reattaches to a survivor from a
+    # prior reload) the first time the user actually invokes AiSDK.
 
 
 def plugin_unloaded():
