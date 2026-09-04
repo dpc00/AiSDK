@@ -236,6 +236,7 @@ async def main_bridge(port: int):
         AssistantMessage,
         UserMessage,
         ResultMessage,
+        CLIConnectionError,
     )
     from claude_agent_sdk.types import TextBlock, ToolUseBlock, ToolResultBlock
 
@@ -256,8 +257,47 @@ async def main_bridge(port: int):
         writer.write((json.dumps(obj) + "\n").encode())
         await writer.drain()
 
+    def _tool_result_text(content, limit=2000):
+        """ToolResultBlock.content is str | list[dict] | None. ai_sdk.py's
+        _render_tool_result expects a flat "result" string (it never got
+        one before this fix, so tool output silently never appeared in the
+        view — only the ✔/✘ icon did)."""
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            text = content
+        else:
+            parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+            text = "\n".join(parts)
+        if len(text) > limit:
+            text = text[:limit] + f"... [{len(text) - limit} more chars truncated]"
+        return text
+
     async with ClaudeSDKClient(options) as client:
         print(f"[agent_query] bridge connected, listening on {port}", flush=True)
+
+        async def _reconnect():
+            """The underlying `claude` CLI child process died (e.g. exit
+            code 1) — the SDK never restarts it on its own, so every
+            request after that point would otherwise fail forever with
+            'Cannot write to terminated process'. Rebuild the connection,
+            resuming the last known session so conversation history isn't
+            lost."""
+            nonlocal _last_session_id
+            print(
+                f"[agent_query] client dead, reconnecting (resume={_last_session_id})",
+                flush=True,
+            )
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            if _last_session_id:
+                options.resume = _last_session_id
+            await client.connect()
 
         async def handle_client(reader, writer):
             nonlocal _last_model, _last_session_id
@@ -269,8 +309,13 @@ async def main_bridge(port: int):
                 qid = req.get("id", 0)
 
                 if req.get("type") == "status_request":
-                    mcp_status = await client.get_mcp_status()
-                    ctx_usage = await client.get_context_usage()
+                    try:
+                        mcp_status = await client.get_mcp_status()
+                        ctx_usage = await client.get_context_usage()
+                    except CLIConnectionError:
+                        await _reconnect()
+                        mcp_status = await client.get_mcp_status()
+                        ctx_usage = await client.get_context_usage()
                     servers = []
                     for s in (mcp_status or {}).get("mcpServers", []):
                         tools = s.get("tools", [])
@@ -342,7 +387,11 @@ async def main_bridge(port: int):
 
                 async def run_query():
                     async with query_lock:
-                        await client.query(prompt)
+                        try:
+                            await client.query(prompt)
+                        except CLIConnectionError:
+                            await _reconnect()
+                            await client.query(prompt)
                         async for msg in client.receive_response():
                             if isinstance(msg, AssistantMessage) and msg.content:
                                 if hasattr(msg, "model") and msg.model:
@@ -374,6 +423,11 @@ async def main_bridge(port: int):
                                 )
                                 for block in content:
                                     if isinstance(block, ToolResultBlock):
+                                        print(
+                                            f"[agent_query] DEBUG tool_result content type="
+                                            f"{type(block.content).__name__} value={block.content!r}",
+                                            flush=True,
+                                        )
                                         await send(
                                             writer,
                                             {
@@ -381,6 +435,9 @@ async def main_bridge(port: int):
                                                 "type": "tool_result",
                                                 "tool_id": block.tool_use_id,
                                                 "is_error": bool(block.is_error),
+                                                "result": _tool_result_text(
+                                                    block.content
+                                                ),
                                             },
                                         )
                             elif isinstance(msg, ResultMessage):

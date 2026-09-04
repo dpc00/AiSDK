@@ -786,6 +786,12 @@ def _render_tool_result(view, tool_id, is_error, result_text=None):
                 },
             )
             view.erase_regions(key)
+            # ai_sdk_replace re-locks the view as part of its own run() (it
+            # always leaves read_only=True when done), so without this the
+            # appends below silently no-op — Sublime's built-in "append"
+            # command does nothing on a read-only view instead of erroring,
+            # which is why tool output never appeared with no error anywhere.
+            view.set_read_only(False)
         if txt:
             # Indent each line of the result for readability. Result
             # already has ellipsis truncation from the bridge if long.
@@ -943,6 +949,7 @@ def _on_event(view, window, event):
             event.get("input", {}),
         )
     elif t == "tool_result":
+        print(f"[ai_sdk] DEBUG tool_result event keys={list(event.keys())} result={event.get('result')!r}")
         _render_tool_result(
             view,
             event.get("tool_id", ""),
